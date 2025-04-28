@@ -1,23 +1,20 @@
 import os
 import gradio as gr
 import requests
+import asyncio
 import inspect
 import pandas as pd
+from agent import create_agent 
+from langchain_core.messages import SystemMessage, HumanMessage 
 
-# (Keep Constants as is)
-# --- Constants ---
+
 DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 
-# --- Basic Agent Definition ---
-# ----- THIS IS WERE YOU CAN BUILD WHAT YOU WANT ------
-class BasicAgent:
-    def __init__(self):
-        print("BasicAgent initialized.")
-    def __call__(self, question: str) -> str:
-        print(f"Agent received question (first 50 chars): {question[:50]}...")
-        fixed_answer = "This is a default answer."
-        print(f"Agent returning fixed answer: {fixed_answer}")
-        return fixed_answer
+
+with open("system_prompt.txt", "r") as file:
+    system_prompt = file.read()
+
+system_message = SystemMessage(content=system_prompt)
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
     """
@@ -38,12 +35,16 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
     questions_url = f"{api_url}/questions"
     submit_url = f"{api_url}/submit"
 
-    # 1. Instantiate Agent ( modify this part to create your agent)
+
     try:
-        agent = BasicAgent()
+        agent = create_agent()
+        if agent is None:
+            return "Failed to create agent. Check console logs for details (e.g., Ollama running?).", None
+        print("Agent created successfully.")
     except Exception as e:
-        print(f"Error instantiating agent: {e}")
-        return f"Error initializing agent: {e}", None
+        print(f"Unexpected error during agent instantiation: {e}")
+        return f"Unexpected error initializing agent: {e}", None
+
     # In the case of an app running as a hugging Face space, this link points toward your codebase ( usefull for others so please keep it public)
     agent_code = f"https://huggingface.co/spaces/{space_id}/tree/main"
     print(agent_code)
@@ -80,12 +81,20 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             print(f"Skipping item with missing task_id or question: {item}")
             continue
         try:
-            submitted_answer = agent(question_text)
+            # Geeting the agent responses
+            input_msg = [HumanMessage(content=question_text)]
+            agent_response = agent.invoke({"messages": input_msg})
+            answer = agent_response['messages'][-1].content
+            submitted_answer = answer[14:] # Extract string response
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
+            print(f"Task ID: {task_id}, Question: {question_text}, Submitted Answer: {submitted_answer}")
             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": submitted_answer})
         except Exception as e:
-             print(f"Error running agent on task {task_id}: {e}")
-             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": f"AGENT ERROR: {e}"})
+              print(f"Error running agent on task {task_id}: {e}")
+              # Log the error but continue if possible
+              results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": f"AGENT ERROR: {e}"})
+              # Optionally add a placeholder answer to submit anyway, or skip submission for this task
+              # answers_payload.append({"task_id": task_id, "submitted_answer": "AGENT ERROR"})
 
     if not answers_payload:
         print("Agent did not produce any answers to submit.")
