@@ -2,11 +2,9 @@ from langchain_community.document_loaders.wikipedia import WikipediaLoader
 from langchain_core.tools import tool
 from typing import List
 from langchain.schema import Document
-from tools.utils import rate_limited
 
 
 @tool
-@rate_limited(calls_per_second=1)
 def wiki_search(query: str) -> str:
     """Search Wikipedia for a query and return up to 2 results, formatted as <Document/> blocks.
     

@@ -13,10 +13,14 @@ if project_root not in sys.path:
 from tools.calculator import add, subtract, multiply, divide # Importing calculator functions
 from tools.wiki_search import wiki_search # Importing wiki search tool
 from tools.web_search import web_search # Corrected import alias if needed, or use web_search_tool directly
-
+from tools.analyze_csv import analyze_csv 
+from tools.analyze_excel import analyze_excel
+from tools.download_file import download_file
+from tools.extract_text_from_image import extract_text_from_image
+from tools.read_file import read_and_save_file
 #switch to using gemini 2.0 model 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage 
+from langchain_core.messages import HumanMessage 
 
 #use LangGraph to create the agent
 from langgraph.graph import START, StateGraph, MessagesState
@@ -33,26 +37,22 @@ tools = [
     multiply,
     divide,
     wiki_search,
-    web_search
+    web_search,
+    analyze_csv,
+    analyze_excel,
+    download_file,
+    extract_text_from_image,
+    read_and_save_file,
 ]
-
-
-with open("system_prompt.txt", "r") as file:
-    system_prompt = file.read()
-
-system_message = SystemMessage(content=system_prompt)
-
-
 
 def create_agent(): #build graph
     try:
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", convert_system_message_to_human=True)
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", 
+        convert_system_message_to_human=True)
     except Exception as e:
         print(f"Error initializing LLM: {e}")
         return None 
         
-
-
     try:
         llm_with_tools = llm.bind_tools(tools)
 

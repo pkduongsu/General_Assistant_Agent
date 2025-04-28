@@ -6,5 +6,8 @@ python-dotenv
 langchain-tavily
 langchain
 langchain-community
+arxiv
 langchain-google-genai
 langgraph
+gradio[oauth]
+pymupdf

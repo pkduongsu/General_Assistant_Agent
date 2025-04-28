@@ -82,7 +82,7 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             continue
         try:
             # Geeting the agent responses
-            input_msg = [HumanMessage(content=question_text)]
+            input_msg = [system_message, HumanMessage(content=question_text)]
             agent_response = agent.invoke({"messages": input_msg})
             answer = agent_response['messages'][-1].content
             submitted_answer = answer[14:] # Extract string response

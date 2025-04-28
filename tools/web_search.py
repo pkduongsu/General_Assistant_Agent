@@ -1,12 +1,10 @@
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.tools import tool
-from tools.utils import rate_limited
 from dotenv import load_dotenv
 
 load_dotenv()
 
 @tool
-@rate_limited(calls_per_second=1)
 def web_search(query: str) -> str:
     """Search Tavily for a query and return up to 3 results as <Document/> blocks."""
     search_tool = TavilySearchResults(max_results=3)
