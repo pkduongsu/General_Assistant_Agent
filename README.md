@@ -1,5 +1,5 @@
 ---
-title: Template Final Assignment
+title: Agents Course Final Assignment
 emoji: 🕵🏻‍♂️
 colorFrom: indigo
 colorTo: indigo
