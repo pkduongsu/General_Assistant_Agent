@@ -1,6 +1,7 @@
 import os
 import gradio as gr
 import requests
+import re
 import asyncio
 import inspect
 import pandas as pd
@@ -11,10 +12,10 @@ from langchain_core.messages import SystemMessage, HumanMessage
 DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
 
 
-with open("system_prompt.txt", "r") as file:
-    system_prompt = file.read()
+with open("system_prompt.txt", "r", encoding="utf-8") as f:
+    system = f.read()
 
-system_message = SystemMessage(content=system_prompt)
+system_message = SystemMessage(content=system)
 
 def run_and_submit_all( profile: gr.OAuthProfile | None):
     """
@@ -81,11 +82,44 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             print(f"Skipping item with missing task_id or question: {item}")
             continue
         try:
-            # Geeting the agent responses
-            input_msg = [system_message, HumanMessage(content=question_text)]
-            agent_response = agent.invoke({"messages": input_msg})
+            # --- Check for associated file ---
+            file_path = None
+            files_url = f"{api_url}/files/{task_id}"
+            try:
+                file_response = requests.get(files_url, timeout=10)
+                if file_response.status_code == 200:
+                    # Assuming the response body directly contains the filename/path
+                    file_path = file_response.text.strip().strip('"') # Get path and remove potential quotes
+                    print(f"Task {task_id}: Found associated file '{file_path}'")
+                elif file_response.status_code == 404:
+                    print(f"Task {task_id}: No associated file found.")
+                else:
+                    # Log other non-404 errors but don't stop the process
+                    print(f"Task {task_id}: Warning - Error checking for file ({file_response.status_code}): {file_response.text[:100]}")
+            except requests.exceptions.RequestException as file_err:
+                print(f"Task {task_id}: Warning - Network error checking for file: {file_err}")
+
+            # --- Prepare agent input ---
+            agent_input = {
+                "messages": [system_message, HumanMessage(content=question_text)]
+            }
+            if file_path:
+                agent_input["input_file"] = file_path # Add file path if found
+
+            # --- Invoke Agent ---
+            agent_response = agent.invoke(agent_input)
             answer = agent_response['messages'][-1].content
-            submitted_answer = answer[14:] # Extract string response
+
+            # --- Process Answer ---
+            match = re.search(r"FINAL ANSWER:.*", answer, flags=re.IGNORECASE)
+            answer_line = match.group(0).strip() if match else answer.strip()
+            answer_line = answer_line.replace("FINAL ANSWER:", "").strip()  # Clean up the answer
+    
+            submitted_answer = answer_line # Extract string response
+
+            # response_dict = agent.invoke({"input": question_text})
+            # # Extract the answer, handling potential missing key
+            # submitted_answer = response_dict.get("output", f"AGENT ERROR: No 'output' key in response: {response_dict}")
             answers_payload.append({"task_id": task_id, "submitted_answer": submitted_answer})
             print(f"Task ID: {task_id}, Question: {question_text}, Submitted Answer: {submitted_answer}")
             results_log.append({"Task ID": task_id, "Question": question_text, "Submitted Answer": submitted_answer})

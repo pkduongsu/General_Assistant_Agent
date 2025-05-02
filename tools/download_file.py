@@ -29,6 +29,6 @@ def download_file(url: str) -> str:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
 
-        return temp_file_path
+        return "File downloaded and saved successfully to {temp_file_path}. Read this file to process its content."
     except Exception as e:
         return f"An error occurred while downloading the file: {e}"

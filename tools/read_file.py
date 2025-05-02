@@ -23,4 +23,4 @@ def read_and_save_file(file_path: str) -> str:
     temp_file.write(content)
     temp_file.close()
 
-    return temp_file.name
+    return "File read and saved successfullly to {file_path}. Read this file to process its content."

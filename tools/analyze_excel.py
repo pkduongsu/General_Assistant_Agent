@@ -21,7 +21,7 @@ def analyze_excel(file_path: str, question: str) -> str:
         # Read Excel file
         df = pd.read_excel(file_path)
         
-        # Basic information about the data
+        # Basic information about the data 
         total_rows = len(df)
         total_columns = len(df.columns)
         columns = list(df.columns)

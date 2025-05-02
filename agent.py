@@ -1,6 +1,6 @@
 import os
 import sys
-import asyncio 
+from typing import List, TypedDict, Annotated, Optional
 from dotenv import load_dotenv
 
 # Add the project root directory to the Python path
@@ -16,17 +16,17 @@ from tools.web_search import web_search # Corrected import alias if needed, or u
 from tools.analyze_csv import analyze_csv 
 from tools.analyze_excel import analyze_excel
 from tools.download_file import download_file
-from tools.extract_text_from_image import extract_text_from_image
+from tools.analyze_image import analyze_image
 from tools.read_file import read_and_save_file
+from tools.analyze_audio import analyze_audio
+from tools.analyze_youtube import answer_question_about_youtube_video
 #switch to using gemini 2.0 model 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage 
-
-#use LangGraph to create the agent
+from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage
+from langgraph.graph.message import add_messages
 from langgraph.graph import START, StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from langchain.tools.base import BaseTool
 
 
 load_dotenv()
@@ -41,14 +41,24 @@ tools = [
     analyze_csv,
     analyze_excel,
     download_file,
-    extract_text_from_image,
+    analyze_image,
     read_and_save_file,
-]
+    analyze_audio,
+    answer_question_about_youtube_video,]
+
+with open("system_prompt.txt", "r", encoding="utf-8") as f:
+    system = f.read()
+
+system_message = SystemMessage(content=system)
+
+class AgentState(TypedDict):
+    input_file: Optional[str] #contains the input file path if there is any
+    messages: Annotated[List[AnyMessage], add_messages] #contains the messages exchanged between the user and the agent
+
 
 def create_agent(): #build graph
     try:
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-04-17", 
-        convert_system_message_to_human=True)
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     except Exception as e:
         print(f"Error initializing LLM: {e}")
         return None 
@@ -72,7 +82,6 @@ def create_agent(): #build graph
         builder.add_edge("tools", "assistant")
         react_graph = builder.compile()
 
-        print("Agent created successfully.")
         return react_graph
     except Exception as e:
         print(f"Error creating Agent {e}")
@@ -89,12 +98,20 @@ def main(): # Define an async main function
                 if query.lower() == 'quit':
                     break
                 if query:
-                    input_msg = [HumanMessage(content=query)]
                     # Assuming agent.run is the correct async method for FunctionAgent
-                    response = agent.invoke({"messages": input_msg})
+                    # Construct the initial messages list including the system prompt
+                    initial_messages = [
+                        system_message, # Include the system prompt read earlier
+                        HumanMessage(content=query)
+                    ]
+                    # Invoke the agent with the messages state
+                    response = agent.invoke({"messages": initial_messages})
 
-                    for m in response['messages']:
-                        m.pretty_print()
+                    # The final response from the graph is in the 'messages' list
+                    # Get the last message, which should be the AI's response
+                    answer = response["messages"][-1].content
+                    # Print only the final answer without the "Agent: " prefix
+                    print(answer)
             except EOFError:
                 break
             except KeyboardInterrupt:

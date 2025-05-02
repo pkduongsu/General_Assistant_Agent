@@ -1,10 +1,15 @@
 import base64
-from typing import List, TypedDict, Annotated, Optional
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 @tool
-def extract_text_from_image(img_path: str) -> str:
+def analyze_image(img_path: str, question: str) -> str:
     """
     Extract text from an image file using a multimodal model.
     """
@@ -23,8 +28,7 @@ def extract_text_from_image(img_path: str) -> str:
                     {
                         "type": "text",
                         "text": (
-                            "Extract all the text from this image. "
-                            "Return only the extracted text, no explanations."
+                            "Analyze the image and answer the following question: " + question
                         ),
                     },
                     {
@@ -38,7 +42,8 @@ def extract_text_from_image(img_path: str) -> str:
         ]
 
         # Call the vision-capable model
-        response = vision_llm.invoke(message)
+        # Call the vision-capable model with the prepared message list
+        response = llm.invoke(message)
 
         # Append extracted text
         all_text += response.content + "\n\n"
@@ -49,3 +54,11 @@ def extract_text_from_image(img_path: str) -> str:
         error_msg = f"Error extracting text: {str(e)}"
         print(error_msg)
         return ""
+
+if __name__ == "__main__":
+    # Example usage
+    img_path = r"C:\Users\pkduo\OneDrive\Máy tính\HF Agent Course Final\Final_Assignment_Template\Screenshot 2025-05-02 144021.png"
+    question = "Review the chess position provided in the image. It is white's turn. Provide the correct next move for white which guarantees a win. Please provide your response in algebraic notation.?"
+    # Invoke the tool using the recommended .invoke() method with a dictionary input
+    result = analyze_image.invoke({"img_path": img_path, "question": question})
+    print(result)
