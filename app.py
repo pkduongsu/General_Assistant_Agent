@@ -2,11 +2,11 @@ import os
 import gradio as gr
 import requests
 import re
-import asyncio
-import inspect
+import tempfile
 import pandas as pd
 from agent import create_agent 
 from langchain_core.messages import SystemMessage, HumanMessage 
+from tools.download_file import download_file
 
 
 DEFAULT_API_URL = "https://agents-course-unit4-scoring.hf.space"
@@ -88,23 +88,35 @@ def run_and_submit_all( profile: gr.OAuthProfile | None):
             try:
                 file_response = requests.get(files_url, timeout=10)
                 if file_response.status_code == 200:
-                    # Assuming the response body directly contains the filename/path
-                    file_path = file_response.text.strip().strip('"') # Get path and remove potential quotes
-                    print(f"Task {task_id}: Found associated file '{file_path}'")
+                    file = response.headers.get("content-disposition", "")
+                    match = re.search(r'filename="([^"]+)"', file)
+                    if match:
+                        filename = match.group(1)
+
+                    #save file to a temporary location
+                    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                        temp_file.write(file_response.content)
+                        file_path = temp_file.name
+
+                    file_prompt = "The file needed for this task is downloaded and saved locally to: " + file_path + ".Read this file to process its content."
+
+
+                    print(f"Task {task_id}: Found associated file")
                 elif file_response.status_code == 404:
                     print(f"Task {task_id}: No associated file found.")
-                else:
+                else: 
                     # Log other non-404 errors but don't stop the process
-                    print(f"Task {task_id}: Warning - Error checking for file ({file_response.status_code}): {file_response.text[:100]}")
+                    print(f"Task {task_id}: Warning - Error checking for file")
             except requests.exceptions.RequestException as file_err:
                 print(f"Task {task_id}: Warning - Network error checking for file: {file_err}")
+
+            question_text = question_text + " " + file_prompt if file_path else question_text
 
             # --- Prepare agent input ---
             agent_input = {
                 "messages": [system_message, HumanMessage(content=question_text)]
             }
-            if file_path:
-                agent_input["input_file"] = file_path # Add file path if found
+
 
             # --- Invoke Agent ---
             agent_response = agent.invoke(agent_input)

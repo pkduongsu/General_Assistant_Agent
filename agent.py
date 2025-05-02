@@ -17,9 +17,8 @@ from tools.analyze_csv import analyze_csv
 from tools.analyze_excel import analyze_excel
 from tools.download_file import download_file
 from tools.analyze_image import analyze_image
-from tools.read_file import read_and_save_file
 from tools.analyze_audio import analyze_audio
-from tools.analyze_youtube import answer_question_about_youtube_video
+from tools.analyze_youtube import answer_question_about_youtube_video # Importing YouTube analysis toolS
 #switch to using gemini 2.0 model 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage
@@ -42,7 +41,6 @@ tools = [
     analyze_excel,
     download_file,
     analyze_image,
-    read_and_save_file,
     analyze_audio,
     answer_question_about_youtube_video,]
 
